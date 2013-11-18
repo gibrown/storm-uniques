@@ -162,10 +162,18 @@ public class TridentUniques {
 		// 	.aggregate(new Fields("ip"), new LocationAggregator(), new Fields("ip_counts"))
 		// 	.each(new Fields("ip_counts","blog_id"), new PrintFilter());
 
-		//uniques across all
     TridentTopology topology = new TridentTopology();
+    topology.newStream("spout", spout) //blog_id,unique_id,location,time
+      .project(new Fields( "time","unique_id")) //reduce number of fields we send in
+      .each(new Fields("time"), new BinTime( 10, "second" ), new Fields("time_bin"))
+			.groupBy(new Fields("time_bin","unique_id")) //TODO: fix me by adding unique_fields parameters!
+      .persistentAggregate(new MemoryMapState.Factory(), new Count(), new Fields("count"))
+      .newValuesStream()
+      .each(new Fields("count"), new PrintFilter()); //TODO: this should write to a DB
 
-    addUniqueProcessing( new ArrayList(), 1, "second", topology, spout );
+
+		//uniques across all
+    //addUniqueProcessing( new ArrayList(), 1, "second", topology, spout );
 
     return topology.build();
   }
@@ -178,13 +186,15 @@ public class TridentUniques {
     //group.add(unique_fields);
 
     topology.newStream("spout", spout) //blog_id,unique_id,location,time
-      .project(new Fields( "time_bin","unique_id")) //reduce number of fields we send in
+      .project(new Fields( "time","unique_id")) //reduce number of fields we send in
       .each(new Fields("time"), new BinTime( time_bin_size, time_bin_unit ), new Fields("time_bin"))
 			.groupBy(new Fields("time_bin","unique_id")) //TODO: fix me by adding unique_fields parameters!
       .persistentAggregate(new MemoryMapState.Factory(), new One(), new Fields("one"))
+      .newValuesStream()
       .groupBy(new Fields("time_bin"))
       .persistentAggregate(new MemoryMapState.Factory(), new Count(), new Fields("unique_count"))
-			.each(new Fields("unique_count"), new PrintFilter()); //TODO: this should write to a DB
+      .newValuesStream()
+      .each(new Fields("unique_count"), new PrintFilter()); //TODO: this should write to a DB
 
 	}
 
