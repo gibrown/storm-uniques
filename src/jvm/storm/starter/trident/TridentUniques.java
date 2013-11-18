@@ -139,7 +139,7 @@ public class TridentUniques {
     }
   }
 
-  public static StormTopology buildTopology(LocalDRPC drpc) throws IOException {
+  public static StormTopology buildTopology() throws IOException {
     RandomEventSpout spout = new RandomEventSpout();
 
 		//simple test
@@ -190,10 +190,14 @@ public class TridentUniques {
 
   public static void main(String[] args) throws Exception {
     Config conf = new Config();
+    StormTopology topology = buildTopology();
 
-    LocalDRPC drpc = new LocalDRPC();
-    LocalCluster cluster = new LocalCluster();
-    cluster.submitTopology("hackaton", conf, buildTopology(drpc));
+    if ( args != null && args.length > 0 ) {
+      conf.setNumWorkers( 3 );
+      StormSubmitter.submitTopology( args[0], conf, topology );
+    } else {
+      LocalCluster cluster = new LocalCluster();
+      cluster.submitTopology( "hackaton", conf, topology );
+    }
   }
-
 }
