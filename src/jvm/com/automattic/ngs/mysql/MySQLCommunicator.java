@@ -17,20 +17,14 @@ public class MySQLCommunicator {
   private String dbUrl = null;
   private String dbClass = "com.mysql.jdbc.Driver";
   private boolean result = false;
-  private String primaryKey = null, tableName = null;
   private List<String> columnNames = new ArrayList<String>(); 
   private List<String> columnTypes = new ArrayList<String>();
 
   public MySQLCommunicator(
-      String primaryKey, 
-      String tableName,
       List<String> columnNames, 
       List<String> columnTypes
   ) {
     super();
-    this.primaryKey = primaryKey;
-    this.primaryKey = primaryKey;
-    this.tableName = tableName;
     this.columnNames = columnNames;
     this.columnTypes = columnTypes;
   }
@@ -61,7 +55,6 @@ public class MySQLCommunicator {
     try {
       prepstmt = null;
       stmt = "SELECT * FROM " + tableName + " LIMIT 1";
-      //System.out.println(stmt);
       prepstmt = con.prepareStatement(stmt);
       rs = prepstmt.executeQuery();
       if(rs.next()) {
@@ -103,7 +96,6 @@ public class MySQLCommunicator {
         stmt = stmt + ", Unique KEY (" + uniqueKey + ")";
       }
       stmt = stmt + ") ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1";
-      //System.out.println(stmt);
       prepstmt = con.prepareStatement(stmt);
       r = prepstmt.executeUpdate();
       if(r != 0) {
@@ -116,50 +108,59 @@ public class MySQLCommunicator {
     }
   }
 
-  public int insertRow(List<Object> fieldValues) throws SQLException {
-    return this.insertRow(fieldValues,false);
+  public int insertRow(String tableName, List<Object> fieldValues) throws SQLException {
+    return this.insertRow(tableName, fieldValues, false);
 	}
 
   //insert a row in the RDBMS table 
-  public int insertRow(List<Object> fieldValues, boolean ignore) throws SQLException {
+  public int insertRow(String tableName, List<Object> fieldValues, boolean ignore) throws SQLException {
     int r = 0;
     String stmt = null;
     PreparedStatement prepstmt = null;
     int noOfColumns = 0;
-    try {
-      prepstmt = null;
-      noOfColumns = columnNames.size();
-      if ( ignore )
-        stmt = "INSERT IGNORE INTO ";
-      else
-        stmt = "INSERT INTO ";
-      stmt += tableName + this.buildInsertColumns( fieldValues );
+    prepstmt = null;
+    noOfColumns = columnNames.size();
+
+    if ( ignore )
+      stmt = "INSERT IGNORE INTO ";
+    else
+      stmt = "INSERT INTO ";
+
+    stmt += tableName + this.buildInsertColumns( fieldValues );
+    r = this.con.createStatement().executeUpdate( stmt );
+    if(r == 0) {
+      return 0;
+    }
+
+    return r;
+  }
+
+  //insert a row in the RDBMS table 
+  public int incrementRow(String tableName, List<Object> fieldValues, String incFieldName) throws SQLException {
+    int r = 0;
+    String stmt = null;
+    PreparedStatement prepstmt = null;
+    int noOfColumns = 0;
+    prepstmt = null;
+    noOfColumns = columnNames.size();
+
+    stmt = "INSERT INTO ";
+
+    stmt += tableName + this.buildInsertColumns( fieldValues );
+    stmt += " ON DUPLICATE KEY UPDATE " + incFieldName + " = " + incFieldName + " + 1";
+		try {
       r = this.con.createStatement().executeUpdate( stmt );
-      //prepstmt = con.prepareStatement(stmt);
-      //for(int j = 0; j <= noOfColumns - 1; j++) {
-      //  prepstmt.setObject(j + 1, fieldValues.get(j));
-      //}
-      //System.out.println("Values: " + fieldValues.toString() );
-      //System.out.println(prepstmt.toString());
-      //r = prepstmt.executeUpdate();
-      if(r == 0) {
-        return 0;
-      }
+    } catch ( Exception e ) {
+      try {
+        r = this.con.createStatement().executeUpdate( stmt );
+      } catch (Exception f) {
+        throw new RuntimeException("insertRow failed to increment",  f);
+			}
+		}
+    if (r == 0) {
+      throw new RuntimeException("insertRow failed to increment");
     }
-    catch(Exception e) {
-      //TODO: handle errors
-      if ( null == prepstmt )
-        System.out.println( "prepstmt is null" );
-      else
-        System.out.println( prepstmt.toString() );
-      if ( null == this.con )
-        System.out.println( "con is null" );
-      else
-        System.out.println( this.con.toString() );
-      System.out.println( fieldValues.toString() );
-      System.out.println( stmt );
-      e.printStackTrace();
-    }
+
     return r;
   }
 
@@ -177,12 +178,10 @@ public class MySQLCommunicator {
         vs = v.toString();
       if(i != noOfColumns - 1) {
         text = text + "`" + columnNames.get(i) + "`, ";
-        //values = values + "?,";
         values = values + vs + ",";
       }
       else {
         text = text + "`" + columnNames.get(i) + "`) ";
-        //values = values + "?";
         values = values + vs;
       }
     }

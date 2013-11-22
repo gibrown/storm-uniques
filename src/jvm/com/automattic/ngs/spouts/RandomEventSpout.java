@@ -1,4 +1,4 @@
-package storm.starter.spout;
+package com.automattic.ngs.spouts;
 
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -25,7 +25,7 @@ public class RandomEventSpout extends BaseRichSpout {
 
   @Override
   public void nextTuple() {
-		String unique_id = Integer.toString( _rand.nextInt(100000) );
+		String unique_id = Integer.toString( _rand.nextInt(1000) );
 		long blog_id = _rand.nextInt(100) + 1;
 
     String[] locations = new String[]{ "US", "UK", "AU", "NZ", "CR" };

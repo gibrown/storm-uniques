@@ -9,6 +9,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.automattic.ngs.bolts.UniquesBolt;
 import com.automattic.ngs.spouts.RandomEventSpout;
@@ -26,16 +27,17 @@ public class UniquesTestTopology {
     builder.setSpout("spout", new RandomEventSpout(), 5);
 
     builder
-      .setBolt("count", new UniquesBolt(
-        "unique_id",
-        "count",
-        new ArrayList<String>(),
-        new ArrayList<String>(),
+      .setBolt("blog_uniques_seconds", new UniquesBolt(
+        "uniques_hash",
+        "uniques",
         "jdbc:mysql://localhost/uniques",
         "sqluser",
-        "sqluserpw"
+        "sqluserpw",
+        10,
+        "second",
+        Arrays.asList("blog_id","unique_id")
       ), 2)
-      .fieldsGrouping("spout", new Fields("unique_id","blog_id","location"))
+      .fieldsGrouping("spout", new Fields("unique_id","blog_id"))
 		  ;
 
     Config conf = new Config();
